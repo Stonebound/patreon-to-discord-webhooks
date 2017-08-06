@@ -24,7 +24,7 @@ $event = $_SERVER['HTTP_X_PATREON_EVENT']; // pledges:create pledges:delete pled
 $sig = $_SERVER['HTTP_X_PATREON_SIGNATURE']; // you should probably check those, oh well
 
 // get all the user info
-$amount_cents = $event_data['data']['attributes']['amount_cents'];
+$pledge_amount = $event_data['data']['attributes']['amount_cents'];
 $patron_id = $event_data['data']['relationships']['patron']['data']['id'];
 
 foreach ($event_data['included'] as $included_data) {
@@ -39,11 +39,11 @@ $patron_fullname = $user_data['attributes']['full_name'];
 
 // send event to discord
 if ($event == "pledges:create") {
-    postToDiscord(":star: " . $patron_fullname . " just pledged for " . $amount_cents . " cents! <" . $patron_url . ">");
+    postToDiscord(":star: " . $patron_fullname . " just pledged for $" . number_format(($pledge_amount /100), 2, '.', ' ') . "! <" . $patron_url . ">");
 } else if ($event == "pledges:delete") {
     postToDiscord(":disappointed: " . $patron_fullname . " just removed their pledge! <" . $patron_url . ">");
 } else if ($event == "pledges:update") {
-    postToDiscord(":open_mouth: " . $patron_fullname . " just updated their pledge to " . $amount_cents . " cents! <" . $patron_url . ">");
+    postToDiscord(":open_mouth: " . $patron_fullname . " just updated their pledge to $" . number_format(($pledge_amount /100), 2, '.', ' ') . "! <" . $patron_url . ">");
 } else {
     postToDiscord($event . ": something happened with patreon that phit forgot to implement");
 }
