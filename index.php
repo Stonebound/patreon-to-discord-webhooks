@@ -1,6 +1,6 @@
 <?php
 
-$discord_webhook = "YOURLINKHERE https://discordapp.com/api/webhooks/...."
+$discord_webhook = "YOURLINKHERE https://discordapp.com/api/webhooks/....";
 
 // post to discord snippet from https://www.reddit.com/r/discordapp/comments/58hry5/simple_php_function_for_posting_to_webhook/
 function postToDiscord($message)
