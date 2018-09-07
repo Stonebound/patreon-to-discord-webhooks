@@ -2,7 +2,7 @@
 // insert your webhook secret here!
 $secret_webhook_id = "secret";
 // insert your discord webhook url here
-$discord_webhook = "URL"
+$discord_webhook = "URL";
 
 // post to discord snippet from https://www.reddit.com/r/discordapp/comments/58hry5/simple_php_function_for_posting_to_webhook/
 function postToDiscord($message) {
