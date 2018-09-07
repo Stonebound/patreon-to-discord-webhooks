@@ -5,7 +5,7 @@ $secret_webhook_id = "secret";
 $discord_webhook = "URL";
 
 // post to discord snippet from https://www.reddit.com/r/discordapp/comments/58hry5/simple_php_function_for_posting_to_webhook/
-function postToDiscord($message) {
+function postToDiscord($message, $discord_webhook) {
     $data = array("content" => $message, "username" => "Patreon Bot");
     $curl = curl_init($discord_webhook);
     curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "POST");
@@ -58,13 +58,13 @@ $patron_fullname = $user_data['attributes']['full_name'];
 
 // send event to discord
 if ($X_Patreon_Event == "members:pledge:create") {
-    postToDiscord(":star: " . $patron_fullname . " just pledged for $" . number_format(($pledge_amount /100), 2, '.', ' ') . "! <" . $patron_url . ">");
+    postToDiscord(":star: " . $patron_fullname . " just pledged for $" . number_format(($pledge_amount /100), 2, '.', ' ') . "! <" . $patron_url . ">", $discord_webhook);
 } else if ($X_Patreon_Event == "members:pledge:delete") {
-    postToDiscord(":disappointed: " . $patron_fullname . " just removed their pledge! <" . $patron_url . ">");
+    postToDiscord(":disappointed: " . $patron_fullname . " just removed their pledge! <" . $patron_url . ">", $discord_webhook);
 } else if ($X_Patreon_Event == "members:pledge:update") {
-    postToDiscord(":open_mouth: " . $patron_fullname . " just updated their pledge to $" . number_format(($pledge_amount /100), 2, '.', ' ') . "! <" . $patron_url . ">");
+    postToDiscord(":open_mouth: " . $patron_fullname . " just updated their pledge to $" . number_format(($pledge_amount /100), 2, '.', ' ') . "! <" . $patron_url . ">", $discord_webhook);
 } else {
-    postToDiscord($X_Patreon_Event . ": something happened with Patreon ¯\_(ツ)_/¯");
+    postToDiscord($X_Patreon_Event . ": something happened with Patreon ¯\_(ツ)_/¯", $discord_webhook);
 }
 
 ?>
