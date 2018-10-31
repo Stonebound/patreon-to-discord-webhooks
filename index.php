@@ -46,7 +46,7 @@ if (!hash_equals($X_Patreon_Signature, $signature)) {
 
 // get all the user info
 $pledge_amount = $event_data['data']['attributes']['amount_cents'];
-$patron_id = $event_data['data']['relationships']['patron']['data']['id'];
+$patron_id     = $event_data['data']['relationships']['patron']['data']['id'];
 $campaign_id   = $event_data['data']['relationships']['campaign']['data']['id'];
 
 foreach ($event_data['included'] as $included_data) {
