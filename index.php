@@ -10,9 +10,12 @@ function postToDiscord($message, $discord_webhook) {
     $data = array("content" => $message, "username" => "Patreon Bot");
     $curl = curl_init($discord_webhook);
     curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "POST");
+    curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
     curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    return curl_exec($curl);
+    
+    $res = curl_exec($curl);
+    return $res;
 }
 
 // compat for older php versions
@@ -75,4 +78,3 @@ if ($X_Patreon_Event == "pledges:create") {
     postToDiscord($X_Patreon_Event . ": something happened with Patreon ¯\_(ツ)_/¯", $discord_webhook);
 }
 
-?>
