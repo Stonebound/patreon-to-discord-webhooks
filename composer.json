@@ -1,0 +1,19 @@
+{
+    "name": "phit/patreon-to-discord-webhooks",
+    "description": "Posts updates received from a incoming Patreon webhook to a Discord webhook",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "phit",
+            "email": "me@phit.link"
+        }
+    ],
+    "require": {
+        "php": "^8.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.1",
+        "friendsofphp/php-cs-fixer": "^3.75"
+    }
+}

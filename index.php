@@ -1,80 +1,102 @@
 <?php
+
+declare(strict_types = 1);
+
 // insert your patreon webhook secret here!
-$secret_webhook_id = "secret";
+const SECRET_WEBHOOK_ID = "secret";
 
 // insert your discord webhook url here
-$discord_webhook = "URL";
+const DISCORD_WEBHOOK = "URL";
 
-// post to discord snippet from https://www.reddit.com/r/discordapp/comments/58hry5/simple_php_function_for_posting_to_webhook/
-function postToDiscord($message, $discord_webhook) {
-    $data = array("content" => $message, "username" => "Patreon Bot");
-    $curl = curl_init($discord_webhook);
-    curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "POST");
-    curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-    curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
+function postToDiscord(string $message): void
+{
+    $data = ['content' => $message, 'username' => 'Patreon Bot'];
+    $headers = ['Content-Type: application/json'];
+    $curl = curl_init(DISCORD_WEBHOOK);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    
-    $res = curl_exec($curl);
-    return $res;
+    curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($curl, CURLOPT_POST, true);
+    curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data, JSON_THROW_ON_ERROR));
+    curl_exec($curl);
+    curl_close($curl);
 }
 
-// compat for older php versions
-if(!function_exists('hash_equals')) {
-    function hash_equals($str1, $str2) {
-        if(strlen($str1) != strlen($str2)) {
-            return false;
-        } else {
-            $res = $str1 ^ $str2;
-            $ret = 0;
-            for($i = strlen($res) - 1; $i >= 0; $i--) $ret |= ord($res[$i]);
-            return !$ret;
-        }
-    }
+function formatUsd(float $cents): string
+{
+    return '$' . number_format($cents / 100, 2, '.', ' ');
 }
 
-// this saves the post data you get on your endpoint
-$data = @file_get_contents('php://input');
-// decode json post data to arrays
-$event_data = json_decode($data, true);
+// get get post data and decode json
+$data = (string) @file_get_contents('php://input');
+$eventData = json_decode($data, true, 512, JSON_THROW_ON_ERROR);
 
 // also get the headers patreon sends
-$X_Patreon_Event     = $_SERVER['HTTP_X_PATREON_EVENT'];
-$X_Patreon_Signature = $_SERVER['HTTP_X_PATREON_SIGNATURE'];
+$patreonEventHeader = ($_SERVER['HTTP_X_PATREON_EVENT'] ?? '');
+$patreonSignatureHeader = ($_SERVER['HTTP_X_PATREON_SIGNATURE'] ?? '');
+if (empty($data) || empty($patreonEventHeader) || empty($patreonSignatureHeader)) {
+    error_log('Received empty data or headers from Patreon');
+    header('HTTP/1.1 400 Bad Request');
+    exit;
+}
 
 // verify signature
-$signature = hash_hmac('md5', $data, $secret_webhook_id);
-if (!hash_equals($X_Patreon_Signature, $signature)) {
-    die("Patreon Signature didn't match, got: " . $X_Patreon_Signature . " expected: " . $signature);
+$signature = hash_hmac('md5', $data, SECRET_WEBHOOK_ID);
+if (!hash_equals($patreonSignatureHeader, $signature)) {
+    error_log(sprintf('Patreon signature didn\'t match, got: "%s" expected: "%s"', $patreonSignatureHeader, $signature));
+    header('HTTP/1.1 403 Forbidden');
+    exit;
 }
 
 // get all the user info
-$pledge_amount = $event_data['data']['attributes']['amount_cents'];
-$patron_id     = $event_data['data']['relationships']['patron']['data']['id'];
-$campaign_id   = $event_data['data']['relationships']['campaign']['data']['id'];
+$pledgeAmount = (float) ($eventData['data']['attributes']['amount_cents'] ?? 0);
+$patronId = $eventData['data']['relationships']['patron']['data']['id'];
+$campaignId = $eventData['data']['relationships']['campaign']['data']['id'];
 
-foreach ($event_data['included'] as $included_data) {
-    if ($included_data['type'] == 'user' && $included_data['id'] == $patron_id) {
-        $user_data = $included_data;
+$userData = null;
+$campaignData = null;
+foreach ($eventData['included'] as $includedData) {
+    if ($includedData['type'] === 'user' && $includedData['id'] === $patronId) {
+        $userData = $includedData;
     }
-    if ($included_data['type'] == 'campaign' && $included_data['id'] == $campaign_id) {
-        $campaign_data = $included_data;
+    if ($includedData['type'] === 'campaign' && $includedData['id'] === $campaignId) {
+        $campaignData = $includedData;
     }
 }
 
-$patron_url = $user_data['attributes']['url'];
-$patron_fullname = $user_data['attributes']['full_name'];
+$patronUrl = $userData['attributes']['url'] ?? '';
+$patronName = $userData['attributes']['full_name'] ?? '';
 
-$campaign_sum    = $campaign_data['attributes']['pledge_sum'];
-$patron_count    = $campaign_data['attributes']['patron_count'];
+$campaignSum = (float) ($campaignData['attributes']['pledge_sum'] ?? 0);
+$patronCount = $campaignData['attributes']['patron_count'] ?? '';
 
 // send event to discord
-if ($X_Patreon_Event == "pledges:create") {
-    postToDiscord(":star: " . $patron_fullname . " just pledged for $" . number_format(($pledge_amount /100), 2, '.', ' ') . "! <" . $patron_url . "> - New total: $" . number_format(($campaign_sum / 100), 2, '.', ' ') . " by " . $patron_count . " patreons", $discord_webhook);
-} else if ($X_Patreon_Event == "pledges:delete") {
-    postToDiscord(":disappointed: " . $patron_fullname . " just removed their pledge! <" . $patron_url . "> - New total: $" . number_format(($campaign_sum / 100), 2, '.', ' ') . " by " . $patron_count . " patreons", $discord_webhook);
-} else if ($X_Patreon_Event == "pledges:update") {
-    postToDiscord(":open_mouth: " . $patron_fullname . " just updated their pledge to $" . number_format(($pledge_amount /100), 2, '.', ' ') . "! <" . $patron_url . "> - New total: $" . number_format(($campaign_sum / 100), 2, '.', ' ') . " by " . $patron_count . " patreons", $discord_webhook);
+if ($patreonEventHeader === "pledges:create") {
+    $text = sprintf(
+        ":star: %s just pledged for $%s! <%s> - New total: %s (%s members)",
+        $patronName,
+        formatUsd($pledgeAmount),
+        $patronUrl,
+        formatUsd($campaignSum),
+        $patronCount
+    );
+    postToDiscord($text);
+} elseif ($patreonEventHeader === "pledges:delete") {
+    $text = sprintf(
+        ":disappointed: %s just removed their pledge! <%s> - New total: %s (%s members)",
+        $patronName,
+        $patronUrl,
+        formatUsd($campaignSum),
+        $patronCount
+    );
+} elseif ($patreonEventHeader === "pledges:update") {
+    $text = sprintf(
+        ":open_mouth: %s just updated their pledge to $%s! <%s> - New total: %s (%s members)",
+        $patronName,
+        formatUsd($pledgeAmount),
+        $patronUrl,
+        formatUsd($campaignSum),
+        $patronCount
+    );
 } else {
-    postToDiscord($X_Patreon_Event . ": something happened with Patreon ¯\_(ツ)_/¯", $discord_webhook);
+    postToDiscord(sprintf("%s: something happened with Patreon ¯\_(ツ)_/¯", $patreonEventHeader));
 }
-
